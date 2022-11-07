@@ -43,6 +43,10 @@ spotbid=${11}
 CustomAMI=${13}
 FileSystemId=${14}
 QueueCapacityType=${15}
+disableSimultaneousMultithreading=${16}
+efa=${17}
+placementGroup=${18}
+
 IFS='-' read -ra TRIMMED <<< "$CustomAMI"
 CustomAMIStartsWith=${TRIMMED[0]}
 if [ "$scheduler" == "slurm" ]; then
@@ -61,6 +65,9 @@ if [ "$scheduler" == "slurm" ]; then
        yq -i ".Scheduling.SlurmQueues[0].ComputeResources[0].InstanceType=\"$computenodeinstancetype\"" slurm.yaml
        yq -i ".Scheduling.SlurmQueues[0].ComputeResources[0].MinCount=\"$minvpc\"" slurm.yaml
        yq -i ".Scheduling.SlurmQueues[0].ComputeResources[0].MaxCount=\"$maxvpc\"" slurm.yaml
+       yq -i ".Scheduling.SlurmQueues[0].ComputeResources[0].DisableSimultaneousMultithreading=\"$disableSimultaneousMultithreading\"" slurm.yaml
+       yq -i ".Scheduling.SlurmQueues[0].ComputeResources[0].Efa.Enabled=\"$efa\"" slurm.yaml
+       yq -i ".Scheduling.SlurmQueues[0].Networking.PlacementGroup.Enabled=\"$placementGroup\"" slurm.yaml
        yq -i ".Scheduling.SlurmQueues[0].Networking.SubnetIds[0]=\"$computenodesubnetId\"" slurm.yaml
        sed -i 's/\"//g' slurm.yaml
        yq eval-all "select(fileIndex == 1) *+ select(fileIndex == 0)" valid.yaml slurm.yaml >> cluster-config-slurm.yaml
@@ -98,4 +105,3 @@ PARAMETER_NAME="/rg/pcluster/headnode-instance-id/${CLUSTER_NAME}"
 aws ssm put-parameter --name "${PARAMETER_NAME}" --type "String" --value "${HEAD_INSTANCE_ID}" --region $REGION --overwrite
 echo "Instance id of the head node is stored on ${PARAMETER_NAME}"
 echo "Instance id is : ${HEAD_INSTANCE_ID}"
-

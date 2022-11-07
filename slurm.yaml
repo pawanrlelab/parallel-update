@@ -28,10 +28,17 @@ Scheduling:
       InstanceType: 
       MinCount: 
       MaxCount:
+      DisableSimultaneousMultithreading:
+      Efa:
+        Enabled:
     Networking:
+      PlacementGroup:
+        Enabled:
       SubnetIds:
       - 
     Iam:
       S3Access:
         - EnableWriteAccess: true
           BucketName: '*'
+
+          
