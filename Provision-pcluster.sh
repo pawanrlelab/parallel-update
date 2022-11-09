@@ -43,6 +43,11 @@ spotbid=${11}
 CustomAMI=${13}
 FileSystemId=${14}
 QueueCapacityType=${15}
+disableSimultaneousMultithreading=${16}
+efa=${17}
+placementGroup=${18}
+FileSystem=${19}
+
 IFS='-' read -ra TRIMMED <<< "$CustomAMI"
 CustomAMIStartsWith=${TRIMMED[0]}
 if [ "$scheduler" == "slurm" ]; then
@@ -50,8 +55,13 @@ if [ "$scheduler" == "slurm" ]; then
        if [ "$CustomAMIStartsWith" == "ami" ]; then
           yq -i ".Image.CustomAmi=\"$CustomAMI\"" slurm.yaml
        fi
-       if [ "$FileSystemId" != "default" ]; then
-          yq -i '.SharedStorage=[{"MountDir": "/fsx", "Name":"RG_Filesysytem", "StorageType": "FsxLustre", "FsxLustreSettings":{"FileSystemId":"'$FileSystemId'"}}]' slurm.yaml
+       if [ "$FileSystem" == "FsxForLusture" ] && [ "$FileSystemId" != "default" ]; then
+          echo "Mounting $FileSystemId FsxForLusture filesystem to headnode"
+          yq -i '.SharedStorage=[{"MountDir": "/fsx", "Name":"RG_Fsx_Filesysytem", "StorageType": "FsxLustre", "FsxLustreSettings":{"FileSystemId":"'$FileSystemId'"}}]' slurm.yaml
+       fi
+       if [ "$FileSystem" == "EFS" ] && [ "$FileSystemId" != "default" ]; then
+          echo "Mounting $FileSystemId EFS filesystem to headnode"
+          yq -i '.SharedStorage=[{"MountDir": "/efs", "Name":"RG_Efs_Filesysytem", "StorageType": "Efs", "EfsSettings":{"FileSystemId":"'$FileSystemId'"}}]' slurm.yaml
        fi
        yq -i ".Region=\"$Region\"" slurm.yaml
        yq -i ".HeadNode.InstanceType=\"$headnodeinstancetype\"" slurm.yaml
@@ -61,6 +71,9 @@ if [ "$scheduler" == "slurm" ]; then
        yq -i ".Scheduling.SlurmQueues[0].ComputeResources[0].InstanceType=\"$computenodeinstancetype\"" slurm.yaml
        yq -i ".Scheduling.SlurmQueues[0].ComputeResources[0].MinCount=\"$minvpc\"" slurm.yaml
        yq -i ".Scheduling.SlurmQueues[0].ComputeResources[0].MaxCount=\"$maxvpc\"" slurm.yaml
+       yq -i ".Scheduling.SlurmQueues[0].ComputeResources[0].DisableSimultaneousMultithreading=\"$disableSimultaneousMultithreading\"" slurm.yaml
+       yq -i ".Scheduling.SlurmQueues[0].ComputeResources[0].Efa.Enabled=\"$efa\"" slurm.yaml
+       yq -i ".Scheduling.SlurmQueues[0].Networking.PlacementGroup.Enabled=\"$placementGroup\"" slurm.yaml
        yq -i ".Scheduling.SlurmQueues[0].Networking.SubnetIds[0]=\"$computenodesubnetId\"" slurm.yaml
        sed -i 's/\"//g' slurm.yaml
        yq eval-all "select(fileIndex == 1) *+ select(fileIndex == 0)" valid.yaml slurm.yaml >> cluster-config-slurm.yaml
@@ -69,8 +82,12 @@ if [ "$scheduler" == "slurm" ]; then
        pcluster create-cluster --cluster-name $CLUSTER_NAME --cluster-configuration cluster-config-slurm.yaml
 else
        echo "batch.yaml exists"
-        if [ "$CustomAMIStartsWith" == "ami" ]; then
+       if [ "$CustomAMIStartsWith" == "ami" ]; then
             yq -i ".Image.CustomAmi=\"$CustomAMI\"" batch.yaml
+       fi
+       if [ "$FileSystem" == "EFS" ] && [ "$FileSystemId" != "default" ]; then
+          echo "Mounting $FileSystemId EFS filesystem to headnode"
+          yq -i '.SharedStorage=[{"MountDir": "/efs", "Name":"RG_Efs_Filesysytem", "StorageType": "Efs", "EfsSettings":{"FileSystemId":"'$FileSystemId'"}}]' batch.yaml
        fi
        yq -i ".Region=\"$Region\"" batch.yaml
        yq -i ".HeadNode.InstanceType=\"$headnodeinstancetype\"" batch.yaml
@@ -98,4 +115,3 @@ PARAMETER_NAME="/rg/pcluster/headnode-instance-id/${CLUSTER_NAME}"
 aws ssm put-parameter --name "${PARAMETER_NAME}" --type "String" --value "${HEAD_INSTANCE_ID}" --region $REGION --overwrite
 echo "Instance id of the head node is stored on ${PARAMETER_NAME}"
 echo "Instance id is : ${HEAD_INSTANCE_ID}"
-
