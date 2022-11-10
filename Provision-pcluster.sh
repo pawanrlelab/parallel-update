@@ -46,7 +46,7 @@ QueueCapacityType=${15}
 disableSimultaneousMultithreading=${16}
 efa=${17}
 placementGroup=${18}
-FileSystem=${19}
+FileSystemType=${19}
 
 IFS='-' read -ra TRIMMED <<< "$CustomAMI"
 CustomAMIStartsWith=${TRIMMED[0]}
@@ -55,11 +55,11 @@ if [ "$scheduler" == "slurm" ]; then
        if [ "$CustomAMIStartsWith" == "ami" ]; then
           yq -i ".Image.CustomAmi=\"$CustomAMI\"" slurm.yaml
        fi
-       if [ "$FileSystem" == "FsxForLusture" ] && [ "$FileSystemId" != "default" ]; then
-          echo "Mounting $FileSystemId FsxForLusture filesystem to headnode"
+       if [ "$FileSystemType" == "FSxForLustre" ] && [ "$FileSystemId" != "default" ]; then
+          echo "Mounting $FileSystemId FSxForLustre filesystem to headnode"
           yq -i '.SharedStorage=[{"MountDir": "/fsx", "Name":"RG_Fsx_Filesysytem", "StorageType": "FsxLustre", "FsxLustreSettings":{"FileSystemId":"'$FileSystemId'"}}]' slurm.yaml
        fi
-       if [ "$FileSystem" == "EFS" ] && [ "$FileSystemId" != "default" ]; then
+       if [ "$FileSystemType" == "EFS" ] && [ "$FileSystemId" != "default" ]; then
           echo "Mounting $FileSystemId EFS filesystem to headnode"
           yq -i '.SharedStorage=[{"MountDir": "/efs", "Name":"RG_Efs_Filesysytem", "StorageType": "Efs", "EfsSettings":{"FileSystemId":"'$FileSystemId'"}}]' slurm.yaml
        fi
@@ -85,7 +85,7 @@ else
        if [ "$CustomAMIStartsWith" == "ami" ]; then
             yq -i ".Image.CustomAmi=\"$CustomAMI\"" batch.yaml
        fi
-       if [ "$FileSystem" == "EFS" ] && [ "$FileSystemId" != "default" ]; then
+       if [ "$FileSystemType" == "EFS" ] && [ "$FileSystemId" != "default" ]; then
           echo "Mounting $FileSystemId EFS filesystem to headnode"
           yq -i '.SharedStorage=[{"MountDir": "/efs", "Name":"RG_Efs_Filesysytem", "StorageType": "Efs", "EfsSettings":{"FileSystemId":"'$FileSystemId'"}}]' batch.yaml
        fi
